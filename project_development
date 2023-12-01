@@ -1,0 +1,370 @@
+# Google Data Analytics Case Study: Bellabeat (R)
+
+Bellabeat is a high-tech manufacturer of health products for women.
+
+
+# Sample
+
+This dataset was generated between 03/12/2016 and 05/12/2016.
+
+It has 30 users and includes minute-level results for physical activity and sleep monitoring.
+
+This data set does not distinguish gender, so we will provide general insights.
+
+
+# Goal
+
+What?	Make Bellabeat the company that most engages customers in the sector.
+ 
+
+How?	Find valuable insights into users' routines and thus create new 	strategies for the 		company to engage its customers.
+
+
+# User trends
+
+To reach trends and insights from our users, we first look at the development of our work.
+See below.
+
+
+## Step 1, install packages.
+
+install.packages("tidyverse")
+library("tidyverse")
+
+install.packages("readr")
+library("readr")
+
+install.packages("lubridate")
+library("lubridate")
+
+install.packages("janitor")
+library("janitor")
+
+install.packages("skimr")
+library("skimr")
+
+install.packages("ggplot2")
+library("ggplot2")
+
+install.packages("dplyr")
+library("dplyr")
+
+install.packages("here")
+library("here")
+
+
+## Step 2, import data.
+
+heartrate_seconds_merged <- read_csv("heartrate_seconds_merged.csv")
+dailyActivity_merged <- read_csv("dailyActivity_merged.csv")
+hourlyCalories_merged <- read_csv("hourlyCalories_merged.csv")
+hourlySteps_merged <- read_csv("hourlySteps_merged.csv")
+sleepDay_merged <- read_csv("sleepDay_merged.csv")
+weightLogInfo_merged <- read_csv("weightLogInfo_merged.csv")
+minuteMETsNarrow_merged <- read_csv("minuteMETsNarrow_merged.csv")
+
+
+## Step 3, check up the data frames.
+
+head(dailyActivity_merged) 
+colnames(dailyActivity_merged)
+head(sleepDay_merged) 
+head(hourlyCalories_merged) 
+head(hourlySteps_merged) 
+head(weightLogInfo_merged) 
+head(minuteMETsNarrow_merged) 
+
+
+## Step 4, clean column names and rename
+
+daily_activity <- clean_names(dailyActivity_merged)
+sleep_day <- clean_names(sleepDay_merged)
+hourly_calories <- clean_names(hourlyCalories_merged)
+hourly_steps <- clean_names(hourlySteps_merged)
+weight <- clean_names(weightLogInfo_merged)
+mets <- clean_names(minuteMETsNarrow_merged)
+mets_ <- mets %>% 
+  rename(mets=me_ts)
+
+
+## Step 5, fixing formatting of data and time.
+
+
+### daily_activity
+
+daily_activity$activity_date=as.POSIXct(daily_activity$activity_date, format="%m/%d/%Y", tz=Sys.timezone())
+
+daily_activity$date_act <- format(daily_activity$activity_date, format = "%m/%d/%y")
+
+daily_activity$date_act_2 <- as_date(daily_activity$activity_date)
+
+daily_activity$date_weak <- wday(daily_activity$date_act_2, label = TRUE)
+
+daily_activity$date_weak_numb. <- wday(daily_activity$date_act_2, label = FALSE)
+
+
+### hourly_calories
+
+hourly_calories$activity_hour=as.POSIXct(hourly_calories$activity_hour, format="%m/%d/%Y %I:%M:%S %p", tz=Sys.timezone())
+
+hourly_calories$date <- format(hourly_calories$activity_hour, format = "%m/%d/%y")
+
+hourly_calories$date_2 <- as_date(hourly_calories$activity_hour)
+
+hourly_calories$time <- format(hourly_calories$activity_hour, format = "%H:%M:%S %p", tz=Sys.timezone())
+
+hourly_calories$time_2 <- hms::as.hms(hourly_calories$time, tz=Sys.timezone())
+
+
+
+### sleep_day
+
+sleep_day$sleep_day=as.POSIXct(sleep_day$sleep_day, format="%m/%d/%Y %I:%M:%S", tz=Sys.timezone())
+
+sleep_day$date <- as_date(sleep_day$sleep_day)
+
+
+
+### hourly_steps
+
+hourly_steps$activity_hour=as.POSIXct(hourly_steps$activity_hour, format="%m/%d/%Y %I:%M:%S %p", tz=Sys.timezone())
+
+hourly_steps$hour <- format(hourly_steps$activity_hour, format = '%H:%M:%S')
+
+hourly_steps$hour_2 <- hms::as.hms(hourly_steps$hour, tz=Sys.timezone())
+
+hourly_steps$date <- format(hourly_steps$activity_hour, format = '%m/%d/%y')
+
+hourly_steps$date_2 <- mdy(hourly_steps$date)
+
+
+### mets
+
+mets_$activity_minute=as.POSIXct(mets_$activity_minute, format="%m/%d/%Y %I:%M:%S %p", tz=Sys.timezone())
+
+mets_$hour <- format(mets_$activity_minute, format = '%H:%M:%S')
+
+mets_$hour_2 <- hms::as.hms(mets_$hour, tz=Sys.timezone())
+
+mets_$date <- format(mets_$activity_minute, format = '%m/%d/%y')
+
+mets_$date_2 <- mdy(mets_$date)
+
+
+
+## Step 6, cleaning data.
+
+### daily_activity
+
+daily_activity_clean <- daily_activity %>%
+  mutate(total_active_minutes=very_active_minutes+fairly_active_minutes+lightly_active_minutes)%>%
+  select(total_steps, total_distance, total_active_minutes, sedentary_minutes, calories, date_act_2, date_weak, date_weak_numb.) %>%
+  filter(sedentary_minutes!= 0, calories>= 1000, total_steps!=0) %>% 
+   drop_na()
+  
+View(daily_activity_clean)
+
+
+daily_activity_clean %>% 
+  summary()
+
+
+### data set hourly_calories
+
+
+hourly_calories_clean <- hourly_calories %>% 
+  select(-id, -activity_hour, -date, -time) %>% 
+  drop()
+
+  
+View(hourly_calories_clean)
+
+hourly_calories_clean %>% 
+  summary()
+
+
+### data set sleep_day
+
+sleep_day_clean <- sleep_day %>% 
+  select(-id, -sleep_day) %>% 
+  mutate(test=total_time_in_bed >= total_minutes_asleep, hours_in_bed=total_time_in_bed/60, hours_asleep=total_minutes_asleep/60) %>% 
+    drop()
+
+
+View(sleep_day_clean)
+
+
+sleep_day_clean %>% 
+  summary()
+
+
+
+### data set hourly_steps
+
+hourly_steps_clean <- hourly_steps %>% 
+  select(-id, -activity_hour, -hour, -date) %>% 
+  filter(step_total!=0) %>% 
+   drop()
+
+View(hourly_steps_clean)
+
+
+hourly_steps_clean %>% 
+  summary()
+
+
+### data set mets
+
+mets_clean <- mets_ %>% 
+  select(mets, hour_2, date_2) %>% 
+  filter(mets!=0) %>% 
+  drop()
+
+
+View(mets_clean)
+
+
+## Step 7, data manipulation.
+
+### daily_activity
+
+daily_activity_clean_mean <- daily_activity_clean %>% 
+  group_by(date_weak, date_weak_numb.) %>% 
+  summarise(calories_mean= mean(calories), sedentary_minutes_mean= mean(sedentary_minutes), total_active_minutes_mean= mean(total_active_minutes), total_steps_mean= mean(total_steps))
+
+
+View(daily_activity_clean_mean)
+
+
+### data set hourly_calories
+
+hourly_calories_clean_mean <- hourly_calories_clean %>% 
+  group_by(time_2) %>% 
+  summarise(calories_mean= mean(calories))
+
+View(hourly_calories_clean_mean)
+
+
+### data set sleep_day
+
+sleep_day_clean_mean <- sleep_day_clean %>% 
+  group_by(date) %>% 
+  summarise(hours_in_bed_mean= mean(hours_in_bed), hours_asleep_mean= mean(hours_asleep))
+
+View(sleep_day_clean_mean)
+
+
+
+### data set hourly_steps
+
+hourly_steps_clean_median <- hourly_steps_clean %>% 
+  group_by(hour_2) %>% 
+  summarise(step_total_median= median(step_total))
+
+View(hourly_steps_clean_median)
+
+
+### data set mets
+
+mets_clean_mean <- mets_ %>% 
+  group_by(hour_2) %>% 
+  summarise(mets_mean= mean(mets))
+
+
+View(mets_clean_mean)
+
+
+mets_clean_mean_date <-mets_ %>% 
+  group_by(date_2) %>% 
+  summarise(mets_mean= mean(mets))
+
+
+View(mets_clean_mean_date)
+
+
+
+## Step 8, data viz
+
+### data set daily_activity
+
+ggplot(data = daily_activity_clean, aes(x = calories, y= total_steps, color = calories)) +
+  geom_point() +
+  geom_smooth(method = lm, se=FALSE) + 
+  labs(title = 'Relationship between steps and calories per day', subtitle = 'Sample of fitBit made available through Mobius', caption = "Data colected from 2016.04.12 to 2016.05.12", x = 'calories', y = 'steps')
+
+
+ggplot(data = daily_activity_clean,aes(x = calories, y = total_distance, color = calories)) +
+  geom_point() +
+  geom_smooth(method = lm, se=FALSE) + 
+  labs(title = 'Relationship between distance and calories per day', subtitle = 'Sample of fitBit made available through Mobius', caption = "Data colected from 2016.04.12 to 2016.05.12", x = 'calories', y = 'total distance')
+
+
+ggplot(data = daily_activity_clean_mean) +
+  geom_col(aes(x =  total_steps_mean, y = reorder(date_weak, -date_weak_numb.), fill = calories_mean)) +
+  labs(title = "Average steps and calories per day of the week", subtitle = 'Sample of fitBit made available through Mobius', caption = "Data colected from 2016.04.12 to 2016.05.12", x = 'avarage steps', y = 'days of the weak')
+
+
+
+### data set hourly_calories
+
+ggplot(data = hourly_calories_clean_mean) +
+  geom_line(aes(x = time_2, y = calories_mean, color = calories_mean)) +
+  labs(title = "Average calories burned per hour", subtitle = 'Sample of fitBit made available through Mobius', caption = "Data colected from 2016.04.12 to 2016.05.12", x = 'hour', y = 'avarage calories', color = 'calories')
+
+
+
+### data set sleep_day
+
+ggplot(data = sleep_day_clean_mean) +
+  geom_line(aes(x = date, y = hours_asleep_mean, color = 'red')) +
+  geom_line(aes(x = date, y = hours_in_bed_mean, color = "blue")) +
+  labs(title = "Time awake and sleeping", subtitle = 'Sample of fitBit made available through Mobius', caption = "Data colected from 2016.04.12 to 2016.05.12", x = 'date', y = 'hours', color = "asleep or not") +
+  scale_color_discrete(labels = c("awake", "sleeping"))
+
+
+
+### data set hourly_steps
+
+ggplot(data = hourly_steps_clean_median) +
+  geom_line(aes(x = hour_2, y = step_total_median, color = step_total_median)) +
+  labs(title = "Average step per hour", subtitle = 'Sample of fitBit made available through Mobius', caption = "Data colected from 2016.04.12 to 2016.05.12", x = 'hour', y = 'avarage steps', color = 'avarage steps')
+
+  
+  
+### data set mets
+
+ggplot(data = mets_clean_mean) +
+  geom_line(aes(x = hour_2, y = mets_mean, color = mets_mean)) +
+  labs(title = "Average METs per hour", subtitle = 'Sample of fitBit made available through Mobius', caption = "Data colected from 2016.04.12 to 2016.05.12", x = 'hour', y = 'avarage METs', color = 'avarage METs')
+
+  
+  
+ggplot(data = mets_clean_mean_date) +
+  geom_line(aes(x = date_2, y = mets_mean, color = mets_mean)) +
+  labs(title = "Average METs per date", subtitle = 'Sample of fitBit made available through Mobius', caption = "Data colected from 2016.04.12 to 2016.05.12", x = 'date', y = 'avarage METs', color = 'avarage METs')
+
+
+
+
+
+# Strategies
+
+* For greater user engagement, it is suggested to create a reward system for each MET achievement.
+
+* The company could send alerts to users on the days and times when there are fewer people exercising, as this would prevent the user from crowded gyms.
+
+* The device could also help with a routine to improve sleep quality, such as reminding people that it is important to avoid caffeine close to bedtime.
+
+
+# Future analyses
+
+* This data set does not distinguish gender, so it would be important to carry out an analysis only with women.
+
+* For each strategy mentioned, it would be interesting to do research with the target audience about it.
+
+* It would also be interesting to monitor users for a longer period of time to see if they are having a better quality of life.
+
+
+
+
+
